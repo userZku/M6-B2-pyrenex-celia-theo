@@ -17,7 +17,7 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Vie - Model",
+      "title": "Sante | Disponibilite du modele",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -77,7 +77,7 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "Vie - Backend",
+      "title": "Sante | Disponibilite du backend",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -137,7 +137,7 @@
     {
       "id": 3,
       "type": "gauge",
-      "title": "Vie - RPS Model",
+      "title": "Sante | Debit du modele",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -187,7 +187,7 @@
     {
       "id": 4,
       "type": "gauge",
-      "title": "Vie - RPS Backend",
+      "title": "Sante | Debit du backend",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -237,7 +237,7 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "Vie - Erreurs 5xx par service",
+      "title": "Sante | Erreurs HTTP 5xx par service",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -282,7 +282,7 @@
     {
       "id": 6,
       "type": "gauge",
-      "title": "Vie - Erreurs upstream backend",
+      "title": "Sante | Erreurs upstream du backend",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -332,7 +332,7 @@
     {
       "id": 7,
       "type": "timeseries",
-      "title": "Vitesse - Latence model p50 p95 p99",
+      "title": "Performance | Latence du modele p50 / p95 / p99",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -395,7 +395,7 @@
     {
       "id": 8,
       "type": "gauge",
-      "title": "Vitesse - p95 model instantane",
+      "title": "Performance | Latence p95 du modele",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -445,7 +445,7 @@
     {
       "id": 9,
       "type": "timeseries",
-      "title": "Comportement - Repartition des classes predites",
+      "title": "Comportement | Repartition des classes predites",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -459,7 +459,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(pyrenex_predictions_total[5m])) by (predicted_class)",
+          "expr": "100 * sum(rate(pyrenex_predictions_total[5m])) by (predicted_class) / scalar(sum(rate(pyrenex_predictions_total[5m])))",
           "legendFormat": "classe {{predicted_class}}",
           "datasource": {
             "type": "prometheus",
@@ -469,8 +469,9 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
+          "unit": "percent",
           "min": 0,
+          "max": 100,
           "color": {
             "mode": "palette-classic"
           }
@@ -490,7 +491,7 @@
     {
       "id": 10,
       "type": "gauge",
-      "title": "Comportement - p95 proba defaut",
+      "title": "Comportement | Probabilite de defaut p95",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -540,7 +541,7 @@
     {
       "id": 11,
       "type": "stat",
-      "title": "Comportement - Classe dominante",
+      "title": "Comportement | Classe dominante",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -578,7 +579,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Rythme dominant"
+                "value": "Debit dominant"
               }
             ]
           }
@@ -592,6 +593,248 @@
         },
         "orientation": "auto",
         "textMode": "value_and_name",
+        "graphMode": "area",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 12,
+      "type": "barchart",
+      "title": "Comportement | Distribution des probabilites predites",
+      "description": "Histogramme des probabilites de defaut observees sur la periode selectionnee. Chaque barre correspond a une tranche de probabilite non cumulative.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"0.1\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.0\"}[$__range]))",
+          "legendFormat": "0.0 - 0.1",
+          "instant": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"0.2\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.1\"}[$__range]))",
+          "legendFormat": "0.1 - 0.2",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"0.3\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.2\"}[$__range]))",
+          "legendFormat": "0.2 - 0.3",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "refId": "D",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"0.4\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.3\"}[$__range]))",
+          "legendFormat": "0.3 - 0.4",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "refId": "E",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"0.5\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.4\"}[$__range]))",
+          "legendFormat": "0.4 - 0.5",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "refId": "F",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"0.6\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.5\"}[$__range]))",
+          "legendFormat": "0.5 - 0.6",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "refId": "G",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"0.7\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.6\"}[$__range]))",
+          "legendFormat": "0.6 - 0.7",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "refId": "H",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"0.8\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.7\"}[$__range]))",
+          "legendFormat": "0.7 - 0.8",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "refId": "I",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"0.9\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.8\"}[$__range]))",
+          "legendFormat": "0.8 - 0.9",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "refId": "J",
+          "expr": "sum(increase(pyrenex_prediction_proba_bucket{le=\"1.0\"}[$__range])) - sum(increase(pyrenex_prediction_proba_bucket{le=\"0.9\"}[$__range]))",
+          "legendFormat": "0.9 - 1.0",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "showValue": "auto",
+        "groupWidth": 0.85,
+        "barWidth": 0.8,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Contexte | Volume et taux d'erreur",
+      "description": "Volume de requetes du modele et taux de reponses 4xx/5xx, calcules en direct depuis les compteurs HTTP.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_requests_total{job=\"model\"}[5m]))",
+          "legendFormat": "volume total",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "100 * sum(rate(http_requests_total{job=\"model\",status=~\"4..|5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"model\"}[5m])), 0.000001)",
+          "legendFormat": "taux d'erreur",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "taux d'erreur"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Comportement | PSI des probabilites predites",
+      "description": "Population Stability Index calcule depuis le demarrage du service, compare a la distribution de reference du modele.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 37
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "pyrenex_prediction_psi",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.25 }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
         "graphMode": "area",
         "justifyMode": "center"
       }
