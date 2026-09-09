@@ -92,6 +92,31 @@ def test_count_exposes_new(client):
     assert body["new"] <= body["count"]
 
 
+def test_mock_feedback_injects_incrementally(client):
+    """`/mock-feedback` simule le cron : incrémental, reprend après le dernier injecté."""
+    first = client.get("/mock-feedback", params={"feedNumber": 2})
+    assert first.status_code == 200
+    assert first.json()["inserted"] == 2
+    first_ids = first.json()["request_ids"]
+
+    second = client.get("/mock-feedback", params={"feedNumber": 3})
+    assert second.status_code == 200
+    second_ids = second.json()["request_ids"]
+
+    assert set(first_ids).isdisjoint(second_ids)
+    assert client.get("/feedback/count").json()["count"] == 5
+
+
+def test_mock_feedback_rejects_non_positive_feed_number(client):
+    r = client.get("/mock-feedback", params={"feedNumber": 0})
+    assert r.status_code == 422
+
+
+def test_mock_feedback_rejects_when_exceeding_available_rows(client):
+    r = client.get("/mock-feedback", params={"feedNumber": 10_000})
+    assert r.status_code == 400
+
+
 def test_promotion_refused_on_critical_regression():
     """Débloqué par TODO 4 (promotion) : une régression critique bloque la promo.
 

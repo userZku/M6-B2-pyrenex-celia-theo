@@ -23,6 +23,7 @@ from __future__ import annotations
 import logging
 import os
 import sqlite3
+import sys
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,9 +32,13 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
-DATA = Path(__file__).parent.parent.parent.parent / "data"
+ROOT = Path(__file__).parent.parent.parent.parent
+DATA = ROOT / "data"
 DB_PATH = Path(os.environ.get("FEEDBACK_DB", DATA / "feedbacks.db"))
 logger = logging.getLogger(__name__)
+
+sys.path.insert(0, str(ROOT / "scripts"))
+from feedback_store import inject_mock_feedback  # noqa: E402
 
 
 class Feedback(BaseModel):
@@ -94,6 +99,20 @@ async def count() -> dict[str, int]:
             "SELECT COUNT(*) FROM feedbacks WHERE used_for_training = 0"
         ).fetchone()[0]
     return {"count": int(total), "new": int(new)}
+
+
+@app.get("/mock-feedback")
+async def mock_feedback(feedNumber: int) -> dict[str, object]:
+    """Démo : simule l'arrivée de `feedNumber` feedbacks (comme si le cron
+    avait tourné), incrémentalement depuis le dernier `request_id` injecté.
+    """
+    if feedNumber <= 0:
+        raise HTTPException(422, "feedNumber doit être un entier positif")
+    try:
+        inserted = inject_mock_feedback(DB_PATH, DATA / "prod_scored.csv", feedNumber)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"inserted": len(inserted), "request_ids": inserted}
 
 
 @app.post("/feedback", status_code=status.HTTP_201_CREATED)

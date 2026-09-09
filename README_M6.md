@@ -63,6 +63,7 @@ flowchart TD
     F -->|non| E
     F -->|oui| G[retrain.py]
 
+    C -->|lecture : jointure<br/>feedback_store.load_labeled_feedback| H
     G -->|charge| H[(Données train<br/>+ feedback non consommé)]
     G -->|entraîne| I[Modèle candidat]
     I -->|évalue sur| J[(Jeu de référence)]

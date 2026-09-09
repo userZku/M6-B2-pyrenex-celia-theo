@@ -1,0 +1,12 @@
+# Trigger réentraînement — vérifie toutes les 6h s'il y a au moins 200
+# feedbacks non consommés (used_for_training = 0) ; sinon retrain.py sort en
+# succès (skip, pas une erreur). Chemins absolus + venv : cron part de $HOME.
+0 */6 * * * cd /opt/pyrenex && .venv/bin/python scripts/retrain.py --min-feedback 200 >> logs/retrain.log 2>&1
+
+# Installation sur l'hôte de déploiement :
+#   mkdir -p /opt/pyrenex/logs
+#   crontab crontab.txt        # remplace le crontab de l'utilisateur courant
+#   crontab -l                 # vérifie l'installation
+# Déclenchement manuel (hors attente des 6h) : `workflow_dispatch` sur le
+# workflow CI (.github/workflows/ci.yml), ou lancer directement la ligne
+# `python scripts/retrain.py --min-feedback 200` en local.
