@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,14 +25,18 @@ from preprocess import (  # noqa: E402
     load_dataset,
 )
 from promotion import decide_promotion  # noqa: E402
+from feedback_store import (  # noqa: E402
+    load_labeled_feedback,
+    mark_used_for_training,
+)
 
 ROOT = Path(__file__).parent.parent
 DATA = ROOT / "data"
 MODELS = ROOT / "services" / "model" / "models"
 FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 
-FEEDBACKS_PATH = DATA / "feedbacks_simules.csv"
 PROD_SCORED_PATH = DATA / "prod_scored.csv"
+FEEDBACK_DB = Path(os.environ.get("FEEDBACK_DB", DATA / "feedbacks.db"))
 TRAIN_PATH = DATA / "lending_club_train.csv"
 REFERENCE_PATH = DATA / "reference_set.csv"
 PRODUCTION_PATH = MODELS / "pyrenex_risk_v2.joblib"
@@ -51,29 +56,19 @@ RF_PARAMS = dict(
 )
 
 
-def load_feedbacks() -> pd.DataFrame:
-    feedbacks = pd.read_csv(FEEDBACKS_PATH)
-    required = {"request_id", "true_label"}
-    missing = required - set(feedbacks.columns)
-    if missing:
-        raise ValueError(f"Feedback columns missing: {sorted(missing)}")
-    if "used_for_training" not in feedbacks.columns:
-        feedbacks["used_for_training"] = 0
-    feedbacks["used_for_training"] = feedbacks["used_for_training"].fillna(0).astype(int)
-    if not feedbacks["true_label"].isin([0, 1]).all():
-        raise ValueError("true_label must contain only 0 or 1")
-    return feedbacks
+def load_new_feedbacks() -> pd.DataFrame:
+    """Load and enrich unconsumed feedbacks from the SQLite store."""
+    if not FEEDBACK_DB.exists():
+        raise FileNotFoundError(f"Feedback database not found: {FEEDBACK_DB}")
+    return load_labeled_feedback(FEEDBACK_DB, PROD_SCORED_PATH, only_new=True)
 
 
 def build_training_data(feedbacks: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     """Combine the original train set with corrected production examples."""
     X_train, y_train = load_dataset(TRAIN_PATH)
-    production = pd.read_csv(PROD_SCORED_PATH)
-    unused = feedbacks[feedbacks["used_for_training"] == 0]
-    corrected = production.merge(unused[["request_id", "true_label"]], on="request_id")
-    if not corrected.empty:
-        X_feedback = corrected[FEATURES].copy()
-        y_feedback = corrected["true_label"].astype(int)
+    if not feedbacks.empty:
+        X_feedback = feedbacks[FEATURES].copy()
+        y_feedback = feedbacks["true_label"].astype(int)
         X_train = pd.concat([X_train, X_feedback], ignore_index=True)
         y_train = pd.concat([y_train, y_feedback], ignore_index=True)
     return X_train, y_train
@@ -131,14 +126,6 @@ def write_decision(decision, candidate_metrics, production_metrics, feedback_cou
         stream.write(json.dumps(record) + "\n")
 
 
-def mark_feedbacks_consumed(feedbacks: pd.DataFrame) -> None:
-    feedbacks = feedbacks.copy()
-    feedbacks.loc[feedbacks["used_for_training"] == 0, "used_for_training"] = 1
-    temporary_path = FEEDBACKS_PATH.with_suffix(".tmp.csv")
-    feedbacks.to_csv(temporary_path, index=False)
-    temporary_path.replace(FEEDBACKS_PATH)
-
-
 def write_promoted_metadata(
     X_train: pd.DataFrame,
     y_train: pd.Series,
@@ -157,8 +144,8 @@ def main() -> int:
     parser.add_argument("--min-feedback", type=int, default=200)
     args = parser.parse_args()
 
-    feedbacks = load_feedbacks()
-    unused_count = int((feedbacks["used_for_training"] == 0).sum())
+    feedbacks = load_new_feedbacks()
+    unused_count = len(feedbacks)
     if unused_count < args.min_feedback:
         print(f"Skip: {unused_count} new feedback(s), threshold is {args.min_feedback}")
         return 0
@@ -178,7 +165,7 @@ def main() -> int:
 
     joblib.dump(candidate, PROMOTED_PATH)
     write_promoted_metadata(X_train, y_train, candidate_metrics)
-    mark_feedbacks_consumed(feedbacks)
+    mark_used_for_training(FEEDBACK_DB, feedbacks["request_id"].tolist())
     print(json.dumps({"promote": True, "reason": decision.reason}))
     return 0
 

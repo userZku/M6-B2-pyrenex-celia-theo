@@ -200,3 +200,39 @@ def test_promotion_rejects_candidate_below_quality_floor():
 
     assert decision.promote is False
     assert "plancher" in decision.reason
+
+
+def test_retrain_reads_unconsumed_feedbacks_from_sqlite(tmp_path, monkeypatch):
+    """The retrain trigger uses SQLite, not the legacy feedback CSV."""
+    db_path = tmp_path / "feedbacks.db"
+    prod_path = tmp_path / "prod_scored.csv"
+    with sqlite3.connect(db_path) as con:
+        con.execute(
+            "CREATE TABLE feedbacks ("
+            "request_id TEXT PRIMARY KEY, true_label INTEGER NOT NULL, "
+            "comments TEXT, created_at TEXT NOT NULL, "
+            "used_for_training INTEGER NOT NULL DEFAULT 0)"
+        )
+        con.executemany(
+            "INSERT INTO feedbacks VALUES (?, ?, NULL, '2026-01-01', ?)",
+            [("REQ-00000", 0, 0), ("REQ-00001", 1, 1)],
+        )
+    import pandas as pd
+
+    pd.DataFrame(
+        {
+            "request_id": ["REQ-00000", "REQ-00001"],
+            "loan_amnt": [2900, 11900],
+            "true_feature": [1, 2],
+        }
+    ).to_csv(prod_path, index=False)
+
+    import scripts.retrain as retrain
+
+    monkeypatch.setattr(retrain, "FEEDBACK_DB", db_path)
+    monkeypatch.setattr(retrain, "PROD_SCORED_PATH", prod_path)
+
+    feedbacks = retrain.load_new_feedbacks()
+
+    assert list(feedbacks["request_id"]) == ["REQ-00000"]
+    assert feedbacks.iloc[0]["true_label"] == 0
