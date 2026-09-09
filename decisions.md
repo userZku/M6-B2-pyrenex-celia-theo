@@ -4,7 +4,7 @@
 > stockage → jointure → réentraînement → promotion) : figer les contrats est ce
 > qui vous permet d'avancer à deux en parallèle sans vous bloquer.
 
-## Contrats d'interface (à figer en premier)
+## Contrats d'interface 
 
 ```text
 Feedback   : {request_id: str, true_label: 0|1, comments: str|None}
@@ -20,24 +20,22 @@ Modifications apportées à ces contrats en cours de route : _…_
 
 ## Trigger de réentraînement
 
-**Seuil retenu : _200 ?_** — justification : _…_
+**Seuil retenu : 200** — justification : _On déclenche périodiquement et sous condition si toutes les 6 h,  au moins 200 nouveaux feedbacks_
 
 **On compte** : _les feedbacks non consommés (`used_for_training = 0`)_ —
-pourquoi pas le total ? _…_
+pourquoi pas le total ? _pour ne pas réutiliser des feedbacks plusieurs fois_
 
-⭐ Second déclencheur « ou dérive confirmée » (bonus) : _traité / non traité_ —
+⭐ Second déclencheur « ou dérive confirmée » (bonus) : _non traité_ —
 si traité, quelle fonction de M6-B1 est appelée ? _…_
 
-## Jeu de référence retenu (à figer AVANT tout le reste)
+## Jeu de référence retenu 
 
 **Jeu adopté** : _reference_set.csv de M5-B2 de ____ (500 lignes, composition ____)_
-_ou_ _celui livré avec le template (1500 lignes, 17,5 % de défauts)_
 
-**Pourquoi** : _…_
 
-**Si vous avez gardé le jeu du template** : golden run regelé (`--freeze-baseline`)
-le _…_ et bootstrap refait le _…_ → tolérances recalculées : _…_
-**Sinon**, vos seuils M5-B2 s'appliquent tels quels.
+**Pourquoi** : _solution plus rapide pour se concentrer sur l'essentiel du brief._
+
+Les seuils M5-B2 s'appliquent tels quels.
 
 > ⚠️ Le plancher de qualité de la politique de promotion vient de vos **seuils
 > M5-B2**, calibrés sur **votre** jeu. Mesurer les métriques sur un autre jeu
@@ -88,4 +86,11 @@ _… les feedbacks contiennent-ils de la PII ? …_
 ## Point de mi-parcours (jeudi 17h)
 
 - État des briques : _…_
-- **Switch des rôles** — qui reprend quoi : _…_
+- **Switch des rôles** :
+    - Figer le jeu de réference, completer ce fichier : ensemble
+    - schema mermaid : ensemble
+    - brique A et B : Célia
+    - brique D : Théo
+    - brique C : Théo
+    - tests sur A, B, C : Célia
+    - verdiction et documentation : ensemble
