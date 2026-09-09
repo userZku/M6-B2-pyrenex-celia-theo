@@ -109,3 +109,69 @@ def test_promotion_refused_on_critical_regression():
         pytest.skip("TODO 4 de promotion.py à compléter")
     assert decision.promote is False
     assert decision.reason
+
+
+def test_promotion_accepts_candidate_with_meaningful_gain():
+    from scripts.promotion import decide_promotion
+
+    production = {
+        "f1_macro": 0.60,
+        "f1_default": 0.42,
+        "roc_auc": 0.72,
+        "recall_default": 0.66,
+    }
+    candidate = {
+        "f1_macro": 0.62,
+        "f1_default": 0.43,
+        "roc_auc": 0.73,
+        "recall_default": 0.67,
+    }
+
+    decision = decide_promotion(candidate, production)
+
+    assert decision.promote is True
+    assert "f1_macro" in decision.reason
+
+
+def test_promotion_rejects_candidate_without_meaningful_gain():
+    from scripts.promotion import decide_promotion
+
+    production = {
+        "f1_macro": 0.60,
+        "f1_default": 0.42,
+        "roc_auc": 0.72,
+        "recall_default": 0.66,
+    }
+    candidate = {
+        "f1_macro": 0.605,
+        "f1_default": 0.425,
+        "roc_auc": 0.725,
+        "recall_default": 0.665,
+    }
+
+    decision = decide_promotion(candidate, production)
+
+    assert decision.promote is False
+    assert "gain" in decision.reason
+
+
+def test_promotion_rejects_candidate_below_quality_floor():
+    from scripts.promotion import decide_promotion
+
+    production = {
+        "f1_macro": 0.60,
+        "f1_default": 0.42,
+        "roc_auc": 0.72,
+        "recall_default": 0.66,
+    }
+    candidate = {
+        "f1_macro": 0.54,
+        "f1_default": 0.50,
+        "roc_auc": 0.80,
+        "recall_default": 0.70,
+    }
+
+    decision = decide_promotion(candidate, production)
+
+    assert decision.promote is False
+    assert "plancher" in decision.reason
