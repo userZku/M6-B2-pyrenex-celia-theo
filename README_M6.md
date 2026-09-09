@@ -51,6 +51,34 @@ serez seul·e à expliquer cette boucle.
 > Contrats d'interface, seuils et politique de promotion : à figer dans
 > `decisions_TEMPLATE.md` **avant** de coder.
 
+### 🔁 Cycle feedback → retrain → promotion
+
+```mermaid
+flowchart TD
+    A[Client / consommateur du modèle] -->|POST /feedback| B(Service feedback<br/>FastAPI)
+    B -->|valide + stocke| C[(SQLite<br/>feedback + used_for_training)]
+
+    E[Trigger<br/>cron / workflow_dispatch] -->|seuil de feedbacks<br/>non consommés atteint ?| F{≥ min-feedback ?}
+    C -.-> F
+    F -->|non| E
+    F -->|oui| G[retrain.py]
+
+    G -->|charge| H[(Données train<br/>+ feedback non consommé)]
+    G -->|entraîne| I[Modèle candidat]
+    I -->|évalue sur| J[(Jeu de référence)]
+    J --> K[Métriques candidat]
+
+    K --> L{decide_promotion<br/>métriques candidat vs référence}
+    L -->|plancher qualité KO<br/>ou métrique critique en recul > 0.01| M[Rejet<br/>tracé + journalisé]
+    L -->|plancher qualité OK<br/>+ aucune métrique critique en recul > 0.01<br/>+ ≥ 1 gain ≥ 0.01| N[Promotion<br/>tag v2.1.0]
+
+    M --> O[Journal de bord]
+    N --> O
+    N --> P[Feedback marqué used_for_training]
+    N --> Q[CI/CD M5 récupère le tag]
+    Q --> R[Grafana voit v2.1.0]
+```
+
 ## ✅ Réussite
 
 - `/feedback` accepte ≥ 200 annotations ; `request_id` inconnu → 404 ;
