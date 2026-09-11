@@ -178,6 +178,24 @@ marquage, injection mock) et [`tests/test_evaluation.py`](tests/test_evaluation.
 n'exécutent jamais d'entraînement réel : ils manipulent des dictionnaires de
 métriques.
 
+Complétés par [`tests/test_preprocess.py`](tests/test_preprocess.py)
+(chargement/mapping de la cible, colonnes manquantes, préprocesseur sans NaN
+et robuste aux catégories inconnues), [`tests/test_build_reference_set.py`](tests/test_build_reference_set.py)
+(échantillonnage stratifié, reproductibilité, holdout absent),
+[`tests/test_bootstrap_noise.py`](tests/test_bootstrap_noise.py) (sigma des 4
+métriques cibles), [`tests/test_generate_traffic.py`](tests/test_generate_traffic.py)
+(construction des payloads, gestion des erreurs HTTP/réseau) et
+[`tests/test_retrain.py`](tests/test_retrain.py) (construction du jeu
+d'entraînement, entraînement/évaluation/validation du candidat, hash du
+dataset, journalisation de la décision et des métadonnées promues) — le reste
+du pipeline `retrain.py` non couvert par `test_boucle.py`.
+
+⚠️ La CI (`.github/workflows/ci.yml`) n'exécute aujourd'hui que
+`tests/test_evaluation.py` (job `evaluate-model`) et `services/model/tests`
+(job `tests`) : `test_boucle.py`, `test_feedback_store.py` et les nouveaux
+fichiers ci-dessus ne sont pas encore lancés automatiquement — `pytest -q
+tests` reste donc nécessaire en local avant de pousser.
+
 ### Suivi / astreinte
 
 La boucle (déclenchement, backlog de feedbacks, rejets de promotion,
@@ -186,6 +204,7 @@ incohérence tag/déploiement) est couverte par [`runbook.md`](runbook.md).
 ### Reste à faire
 
 - Créer et pousser le tag git `v2.1.0` une fois une promotion validée (étape
-  manuelle/CI, non automatisée par `retrain.py`).
-- Reporter le résultat de l'exécution réelle (déjà dans `decisions_log.jsonl`)
-  dans les sections encore vides de `decisions.md`.
+  manuelle/CI, non automatisée par `retrain.py`) : la promotion a eu lieu
+  (`decisions_log.jsonl`, 2026-09-09) et `services/model/models/pyrenex_risk_v2_1.joblib`/`.json`
+  existent, mais aucun tag `v2.1.0` n'a encore été créé (`git tag --list` ne
+  liste que `v0.0.1`, `v1.1.0-eval-continue-franck`, `v1.1.0-eval-continue-theo`).

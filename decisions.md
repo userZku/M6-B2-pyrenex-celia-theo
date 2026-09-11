@@ -150,3 +150,16 @@ jamais laisser un conseiller y saisir du nominatif.
     - brique C : Théo
     - tests sur A, B, C : Célia
     - verdiction et documentation : ensemble
+
+## Point d'avancement final (2026-09-11)
+
+- **État des briques** : A, B, C, D et E toutes terminées. Le cycle complet
+  (feedback → jointure → retrain → promotion) a été exécuté réellement une
+  fois (cf. « Résultat de notre exécution » ci-dessus) et a abouti à une
+  promotion (`v2.1.0`), pas seulement à des cas mockés.
+- **Tests** : couverture complétée sur tous les scripts hors `*_TEMPLATE.py`
+  (`preprocess.py`, `bootstrap_noise.py`, `build_reference_set.py`,
+  `generate_traffic.py`, et le reste de `retrain.py` non couvert par
+  `test_boucle.py`) — cf. `README_M6.md` section « Tests ». `pytest -q tests`
+  est vert dans son ensemble.
+
