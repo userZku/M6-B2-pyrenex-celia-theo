@@ -1,194 +1,210 @@
-# M5-B1 + M5-B2 — Pyrenex Prod (architecture, CI/CD, monitoring, éval continue)
+# M6-B2 — Implémenter la boucle de rétroaction complète (Pyrenex, binôme)
 
-> **Repo template GitHub.** Un·e des 2 du binôme clique **« Use this
-> template »** → `M5-B1-pyrenex-prod-<binome>`, puis ajoute l'autre comme
-> collaborateur. Vous partez du **scoring v2** (modèle M1 fourni) et vous le
-> mettez en **production complète** : 3 services orchestrés, CI/CD, monitoring
-> Grafana, runbook, puis (B2) évaluation continue + tracking MLflow.
+> **Repo template.** Un binôme fait **« Use this template »** →
+> `M6-B2-pyrenex-boucle-<binome>` et invite l'autre membre en collaborateur.
+> Vous restez avec le binôme de M6-B1 : vous continuez sur votre diagnostic.
 
----
-
-## 🧭 Votre brief en un coup d'œil
-
-**Ce README est votre document de pilotage unique** — tout ce qu'il faut faire,
-dans l'ordre, avec le bon appui. Les autres supports ont chacun un rôle précis :
-
-| Support | Rôle |
-|---|---|
-| **Simplonline** | Le contrat : contexte client, livrables, critères de performance |
-| **Ce README** | Le pilotage : quoi faire, quand, avec quel mini-cours |
-| [`ressources/`](./ressources/) | Les 8 mini-cours d'appui (index dans [`ressources/README.md`](./ressources/README.md)) |
-| **Discord `fil-M5`** | Annonces + questions |
-
-### M5-B1 — les 2 jours sync (binôme)
-
-> La numérotation des tâches est celle de l'énoncé Simplonline (1 → 12).
-> La tâche 4, c'est le déjeuner : elle compte aussi.
-
-| Quand | Tâche | Durée | Appui |
-|---|---|---|---|
-| Mardi 10h35 | 1. Tirage binôme + appropriation de la reprise M1 (modèle + API fournis) | 45 min | — |
-| Mardi 11h20 | 2. Architecture 3 services (`model` / `backend` / `frontend`) — 1ʳᵉ partie | 1h10 | [`01_Docker_compose`](./ressources/01_Docker_compose_multiservices_essentiel.md) |
-| Mardi 12h30 | 4. 🍽️ Déjeuner | 1h | — |
-| Mardi 13h30 | 2. Architecture 3 services — fin | 20 min | [`01_Docker_compose`](./ressources/01_Docker_compose_multiservices_essentiel.md) |
-| Mardi 13h50 | 3. Vérification `docker compose up` | 15 min | [`01_Docker_compose`](./ressources/01_Docker_compose_multiservices_essentiel.md) |
-| Mardi 14h05 | 5. Pipeline CI/CD GitHub Actions + *quality gate* (pause 15 min incluse) | 2h30 | [`03_GitHub_Actions`](./ressources/03_GitHub_Actions_CI_CD_essentiel.md) — appui [`06_Pair_coding`](./ressources/06_Pair_coding_sync_long_essentiel.md) |
-| Mardi 16h45 | 6. Mur réflexif intermédiaire | 15 min | — |
-| Mercredi 9h15 | 7. Endpoint `/metrics` + métriques métier | 30 min | [`02_FastAPI_metrics_Prometheus`](./ressources/02_FastAPI_metrics_Prometheus_essentiel.md) |
-| Mercredi 9h45 | 8. Prometheus + Grafana dans le compose | 30 min | [`02_FastAPI_metrics_Prometheus`](./ressources/02_FastAPI_metrics_Prometheus_essentiel.md) |
-| Mercredi 10h15 | 9. Dashboard Grafana custom (vie / vitesse / comportement) | 45 min | [`04_Grafana_dashboard`](./ressources/04_Grafana_dashboard_custom_essentiel.md) |
-| Mercredi 11h00 | 10. Runbook d'astreinte (4 procédures) | 30 min | [`05_Runbook_astreinte`](./ressources/05_Runbook_astreinte_essentiel.md) |
-| Mercredi 11h30 | 11. **Tour de table binômes** (démo compose + dashboard) | 1h | — |
-| Mercredi 12h30 | 12. Mur réflexif final M5-B1 + lancement M5-B2 | 30 min | — |
-
-### Commits à deux
-
-Pour garder le `Co-authored-by:` sans le retaper à chaque fois, vous pouvez
-activer le template de commit pour ce dépôt :
+## 🚀 Démarrage
 
 ```bash
-git config commit.template .gitmessage
-```
-
-Ensuite, chaque `git commit` dans ce projet ouvre un message prérempli avec la
-ligne `Co-authored-by:` à compléter avec le binôme. Si vous voulez le même
-comportement partout, ajoutez `--global`.
-
-> ⏱️ **Le jalon qui compte** : vos 3 services doivent démarrer **avant
-> d'attaquer la CI**. Si la tâche 3 n'est pas verte à 14h05, appelez —
-> la tâche 5 est la plus longue des deux jours, elle ne se rattrape pas.
-
-### M5-B2 — l'async individuel (jeudi + vendredi matin, 6 h)
-
-Vous repartez **chacun·e** du repo binôme, dans une branche perso
-`<prenom>/m5-b2-eval-continue`. Pas de nouveau repo.
-
-| Quand | Étape | Durée | Appui |
-|---|---|---|---|
-| Jeudi | 1. **Préparation du jeu de référence** — récupérer le holdout M1, en tirer **votre** `data/reference_set.csv` (~500 lignes), puis geler le golden run (`--freeze-baseline`) | 30 min | [`data/README.md`](./data/README.md) + [`08_Evaluation_continue_seuils`](./ressources/08_Evaluation_continue_seuils_essentiel.md) |
-| Jeudi | 2. `scripts/evaluate_model.py` + tracking **MLflow** (4 métriques, code retour 0 / non-zéro) | 1h30 | [`07_MLflow_tracking`](./ressources/07_MLflow_tracking_essentiel.md) + [`08`](./ressources/08_Evaluation_continue_seuils_essentiel.md) |
-| Jeudi | 3. Définition et **justification** des seuils (`evaluation_thresholds.md`) | 1h | [`08_Evaluation_continue_seuils`](./ressources/08_Evaluation_continue_seuils_essentiel.md) |
-| Vendredi | 4. Étape `evaluate-model` bloquante dans le workflow GitHub Actions | 1h | [`03_GitHub_Actions`](./ressources/03_GitHub_Actions_CI_CD_essentiel.md) |
-| Vendredi | 5. Tests pytest pour l'évaluation | 45 min | [`03_GitHub_Actions`](./ressources/03_GitHub_Actions_CI_CD_essentiel.md) |
-| Vendredi | 6. ⭐ Alerte Discord webhook (**bonus**) | 30 min | — |
-| Vendredi | 7. Doc + merge | 45 min | — |
-
-> ⚠️ **Le piège central de B2** : votre jeu de référence n'existe pas encore,
-> et le fichier `data/reference_set_TEMPLATE.csv` du repo n'en est **pas** un
-> (20 lignes = un exemple de format). C'est vous qui le construisez à partir du
-> holdout M1, et sa composition est une **décision à argumenter**.
-> Mode d'emploi : [`data/README.md`](./data/README.md).
-
-### Évaluation continue (M5-B2)
-
-À chaque release, un garde-fou automatique recalcule les métriques du modèle
-sur un jeu de référence figé et **bloque la release** en cas de dégradation.
-
-| Fichier | Rôle |
-|---|---|
-| [`data/reference_set.csv`](./data/reference_set.csv) | Jeu de référence figé (500 lignes, sous-échantillon stratifié du holdout M1, ratio de défauts préservé ~18,4 %) — [`scripts/build_reference_set.py`](./scripts/build_reference_set.py) pour le reproduire |
-| [`data/reference_baseline.json`](./data/reference_baseline.json) | Golden run (métriques gelées sur le jeu de référence, via `--freeze-baseline`) |
-| [`scripts/evaluate_model.py`](./scripts/evaluate_model.py) | Calcule les 4 métriques (F1 macro, F1 défaut, ROC-AUC, recall défaut), les trace dans **MLflow**, compare aux seuils, sort un code retour 0/1 |
-| [`scripts/bootstrap_noise.py`](./scripts/bootstrap_noise.py) | Mesure le bruit d'échantillonnage (bootstrap) du jeu de référence, pour dimensionner les tolérances |
-| [`evaluation_thresholds.md`](./evaluation_thresholds.md) | Seuils (stratégie hybride), justifiés, avec la tolérance relative ≥ 2σ bootstrap |
-| [`tests/test_evaluation.py`](./tests/test_evaluation.py) | Tests pytest (métriques, seuils, cas d'erreur, chemin bout-en-bout `exit 0` / `exit 1`) |
-| `.github/workflows/ci.yml` — job `evaluate-model` | Étape bloquante en CI, entre `tests` et `build-model-image` ; alerte Discord (webhook, bonus) si le job échoue |
-
-```bash
-python scripts/build_reference_set.py          # (une fois) reconstruit le jeu de référence
-python scripts/evaluate_model.py --freeze-baseline   # (une fois) gèle le golden run
-python scripts/evaluate_model.py --release-tag v2.0.0   # évalue une release
-python scripts/bootstrap_noise.py              # mesure le bruit du jeu de référence
-pytest -v tests/test_evaluation.py
-```
-
-### ✅ Checklist livrables
-
-**M5-B1 — avant mercredi 12h30**
-
-- [ ] `docker compose up --build` démarre les **3 services** de façon **reproductible**, healthchecks verts
-- [ ] `/metrics` exposé côté `model` **et** `backend`
-- [ ] Dashboard Grafana provisionné **automatiquement** (3 panels : vie / vitesse / comportement)
-- [ ] Workflow CI **vert**, image poussée sur GHCR, tag `v1.0.0-prod`
-- [ ] Le **contract test** du modèle bloque la release s'il est rouge
-      *(il vérifie le **contrat technique** de l'API — pas la performance du
-      modèle : ça, c'est l'évaluation continue de B2)*
-- [ ] `runbook.md` — 4 procédures (Service KO / Latence / Métrique modèle / Rollback)
-- [ ] `README.md` — schéma Mermaid de l'archi + démarrage en 3 commandes
-- [ ] Commits binôme : `Co-authored-by:` ou auteurs nominatifs
-
-**M5-B2 — avant vendredi 17h**
-
-- [ ] `data/reference_set.csv` (~500 lignes) **construit par vous** depuis le holdout M1, figé, versionné
-- [ ] `data/reference_baseline.json` — le golden run, gelé sur **ce** jeu
-- [ ] `scripts/evaluate_model.py` — 4 métriques, ≥ 2 runs MLflow comparables
-- [ ] `evaluation_thresholds.md` — 4 métriques × golden run / plancher absolu / baisse max / **justification**, tolérance relative ≥ 2 σ (bootstrap)
-- [ ] Étape `evaluate-model` dans la CI : `--degrade` fait **échouer** la release
-      *(`mlruns/` est gitignoré : la preuve passe par l'**artefact CI**, pas par un commit)*
-
----
-
-## 🚀 Démarrage (le service `model` tourne déjà)
-
-```bash
-# 1. Environnement de tests local (optionnel mais conseillé)
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-
-# 2. Vérifier que la base fournie passe les tests
-pytest -v services/model/tests
-
-# 3. Lancer ce qui est déjà câblé (model + prometheus + grafana)
-docker compose up --build
+pip install -r requirements.txt
+pytest -q tests                                   # vert dès le clone ; se durcit avec vos TODO
+python scripts/retrain.py --min-feedback 200      # une fois retrain.py complété
 ```
 
-> 🧰 **Avec `uv`** : `uv venv && source .venv/bin/activate` puis
-> **`uv pip install -r requirements-dev.txt`**.
-> ⚠️ Un venv créé par `uv venv` **n'embarque pas `pip`** : si vous voyez
-> `No module named pip`, c'est ça — utilisez `uv pip install`, pas `pip install`.
+> Variante `uv` : `uv venv .venv && source .venv/bin/activate` puis
+> `uv pip install -r requirements.txt`.
+> Dépannage : `No module named pip` → vous êtes dans un venv créé par `uv`,
+> utilisez `uv pip install …` (pas `pip install`).
 
-> ⚠️ **Ports hôte** : frontend **8088** (pas 8080), Grafana **3001** (pas 3000)
-> — pour éviter les conflits courants. Model 8000, backend 8001, Prometheus 9090.
+Données fournies : `data/feedbacks_simules.csv` (200 à injecter), `prod_scored.csv`,
+`lending_club_train.csv`, `reference_set.csv`. Modèle de base : `models/pyrenex_risk_v2.joblib`.
 
-Au départ, seuls `model`, `prometheus` et `grafana` démarrent : à vous
-d'ajouter `backend` + `frontend` et de compléter le reste (cf. TODO).
+> ⚠️ **Premier geste : trancher le jeu de référence.** Le `data/reference_set.csv`
+> livré ici fait **1500 lignes (17,5 % de défauts)** — ce n'est **pas** celui de
+> votre M5-B2 (500 lignes). Or le plancher de votre politique de promotion vient
+> de vos **seuils M5-B2**, calibrés sur *votre* jeu. Par défaut : **remplacez ce
+> fichier par le vôtre**. Sinon, regelez le golden run et refaites le bootstrap.
+> Décision + raison dans `decisions.md` (section « Jeu de référence retenu »).
 
----
+## 🧭 Ce que vous construisez
 
-## 📁 Structure
+Vous construisez **la boucle entière**, à deux. Répartissez-vous les briques,
+mais **switchez à mi-parcours** : à la fin, chacun doit avoir écrit la partie
+qui compte — la **décision de promotion**. En soutenance de certification, vous
+serez seul·e à expliquer cette boucle.
 
+| Brique | À faire | Fichier | Mini-cours |
+|---|---|---|---|
+| A — Endpoint | `POST /feedback` : valide, stocke, 404 / 409 / idempotent | `services/feedback/` | `01` |
+| B — Stockage | SQLite + `used_for_training` + jointure `request_id` | (idem) | `02` |
+| C — Réentraînement | `retrain.py` : données → **candidat** → évaluation | `scripts/retrain_TEMPLATE.py` | `04` |
+| D — **Promotion** | `decide_promotion()` : la règle qui autorise le déploiement | `scripts/promotion_TEMPLATE.py` | `04`, `05` |
+| E — Trigger + CI | cron / `workflow_dispatch`, garde-seuil | `crontab_TEMPLATE.txt`, `.github/workflows/ci.yml` | `03` |
+
+> ⚠️ **Deux questions distinctes.** Le **trigger** répond à *« pourquoi
+> réentraîner ? »*. La **promotion** répond à *« pourquoi déployer ? »*. Un
+> réentraînement déclenché n'implique aucune mise en production : rejeter un
+> candidat est une issue normale, tracée et défendable.
+
+> Contrats d'interface, seuils et politique de promotion : à figer dans
+> `decisions_TEMPLATE.md` **avant** de coder.
+
+### 🔁 Cycle feedback → retrain → promotion
+
+```mermaid
+flowchart TD
+    A[Client / consommateur du modèle] -->|POST /feedback| B(Service feedback<br/>FastAPI)
+    B -->|valide + stocke| C[(SQLite<br/>feedback + used_for_training)]
+
+    E[Trigger<br/>cron / workflow_dispatch] -->|seuil de feedbacks<br/>non consommés atteint ?| F{≥ min-feedback ?}
+    C -.-> F
+    F -->|non| E
+    F -->|oui| G[retrain.py]
+
+    C -->|lecture : jointure<br/>feedback_store.load_labeled_feedback| H
+    G -->|charge| H[(Données train<br/>+ feedback non consommé)]
+    G -->|entraîne| I[Modèle candidat]
+    I -->|évalue sur| J[(Jeu de référence)]
+    J --> K[Métriques candidat]
+
+    K --> L{decide_promotion<br/>métriques candidat vs référence}
+    L -->|plancher qualité KO<br/>ou métrique critique en recul > 0.01| M[Rejet<br/>tracé + journalisé]
+    L -->|plancher qualité OK<br/>+ aucune métrique critique en recul > 0.01<br/>+ ≥ 1 gain ≥ 0.01| N[Promotion<br/>tag v2.1.0]
+
+    M --> O[Journal de bord]
+    N --> O
+    N --> P[Feedback marqué used_for_training]
+    N --> Q[CI/CD M5 récupère le tag]
+    Q --> R[Grafana voit v2.1.0]
 ```
-services/
-  model/        # FOURNI — API scoring M1-B2 + /metrics (ne pas réécrire)
-  backend/      # À COMPLÉTER — orchestrateur (tâche 2)
-  frontend/     # À COMPLÉTER — formulaire nginx (tâche 2)
-prometheus/     # FOURNI — scrape config
-grafana/provisioning/
-  datasources/  # FOURNI — datasource Prometheus
-  dashboards/   # provider fourni ; le dashboard JSON = à vous (tâche 9)
-.github/workflows/ci.yml   # squelette (job test fourni) — tâche 5
-runbook.md                 # template 4 sections — tâche 10
-data/README.md                       # B2 — d'où vient votre jeu de référence
-data/reference_set_TEMPLATE.csv      # B2 — exemple de FORMAT (20 lignes), pas un jeu
-scripts/evaluate_model_TEMPLATE.py   # B2 — MLflow pré-câblé
-evaluation_thresholds_TEMPLATE.md    # B2 — seuils à justifier
-ressources/                # 📚 mini-cours d'appui (lecture juste-à-temps)
-```
 
-> Le service `model` (déjà fourni) est votre **exemple de référence** : il
-> expose déjà `/metrics` — répliquez ce pattern sur le `backend`.
+## ✅ Réussite
 
----
+- `/feedback` accepte ≥ 200 annotations ; `request_id` inconnu → 404 ;
+  feedback contradictoire → 409 ; rejeu à l'identique → sans doublon.
+- Réentraînement **sur seuil de feedbacks non consommés** (199 → rien, 200 → trigger).
+- Le **candidat** est écrit séparément ; `v2.1.0` n'existe **que** s'il est promu.
+- La décision est une **fonction testée sur métriques mockées** (un cas promu,
+  un cas rejeté), et chaque exécution est **journalisée**.
+- Chaîne CI/CD M5 récupère le tag → Grafana voit v2.1.0.
+- **Les deux membres** ont contribué, switch des rôles visible, **journal de bord**.
+- Vous savez **défendre votre politique** — mardi, on confronte celles de tous
+  les binômes, et vous n'aurez pas tous le même verdict.
 
 ## 📚 Ressources
 
-Voir [`./ressources/`](./ressources/) — 8 mini-cours + `liens_officiels.md`.
-Lecture **juste-à-temps** : ouvrez le mini-cours de la tâche en cours.
+Voir [`./ressources/`](./ressources/) — 5 mini-cours + `liens_officiels.md`.
 
----
+## 🛠️ Implémentation réalisée
 
-## 🆘 Bloqué·e·s ?
+Ce qui suit décrit l'état réel de la boucle telle qu'implémentée dans ce
+dépôt (au-delà du template ci-dessus).
 
-1. Relisez le mini-cours de la tâche en cours (`ressources/`).
-2. Le service `model` est votre exemple qui marche : copiez ses patterns.
-3. 30 min sur un bloquant → Discord `fil-M5`.
+### Jeu de référence
+
+Le `data/reference_set.csv` livré a été remplacé par le jeu de référence de
+500 lignes (≈ 18,4 % de défauts) hérité du M5-B2, figé et versionné dans
+`data/reference_baseline.json` (métriques de référence pour `v2.0.0`). Choix
+et justification consignés dans `decisions.md` (section « Jeu de référence
+retenu »). Construit par [`scripts/build_reference_set.py`](scripts/build_reference_set.py)
+(échantillonnage stratifié, `random_state=42`).
+
+### A/B — Endpoint feedback + stockage
+
+[`services/feedback/app/main.py`](services/feedback/app/main.py) expose :
+- `POST /feedback` : valide `request_id` / `true_label` (0 ou 1) via Pydantic,
+  404 si `request_id` inconnu (absent de `data/prod_scored.csv`), 409 en cas de
+  feedback contradictoire (même `request_id`, label différent), idempotent
+  (rejeu à l'identique → 201 sans doublon).
+- `GET /feedback/count` : nombre total et nombre de feedbacks non consommés.
+- `GET /mock-feedback?feedNumber=N` : injection incrémentale de feedbacks
+  simulés pour les tests/démos.
+
+Stockage SQLite (table `feedbacks` : `request_id` clé primaire, `true_label`,
+`comments`, `created_at`, `used_for_training` par défaut à 0). La jointure
+feedback ⋈ scoring (`request_id`) est gérée par
+[`scripts/feedback_store.py`](scripts/feedback_store.py)
+(`load_labeled_feedback`, `mark_used_for_training`, `inject_mock_feedback`).
+
+### C — Réentraînement (`scripts/retrain.py`)
+
+[`scripts/retrain.py`](scripts/retrain.py) : charge les feedbacks non
+consommés, ne déclenche l'entraînement que si leur nombre atteint
+`--min-feedback` (200 par défaut, sinon sortie en succès sans rien faire),
+construit le jeu d'entraînement (données d'origine + feedbacks labellisés),
+entraîne un `RandomForestClassifier` (pipeline avec le préprocesseur
+existant), sauvegarde le candidat (`pyrenex_risk_candidate.joblib`), puis
+évalue candidat et production sur le même jeu de référence figé
+(`data/reference_set.csv`).
+
+### D — Politique de promotion (`scripts/promotion.py`)
+
+`decide_promotion()` implémente la règle explicite :
+- **Plancher de qualité** : le candidat doit respecter `f1_macro ≥ 0.55`,
+  `f1_default ≥ 0.35`, `roc_auc ≥ 0.65`, `recall_default ≥ 0.50`.
+- **Métriques critiques** : `f1_macro` et `recall_default`. Justification : un
+  faux négatif (défaut non détecté) a un coût métier direct (risque de
+  crédit), et le jeu étant déséquilibré, une accuracy globale peut masquer un
+  effondrement sur la classe minoritaire (défaut) — d'où l'usage du F1 macro
+  en complément.
+- **Non-régression** : rejet si une métrique critique recule de plus de
+  `TOLERANCE = 0.01` par rapport à la production.
+- **Gain minimum** : promotion seulement si, en plus, au moins une métrique
+  progresse d'au moins `MIN_GAIN = 0.01`.
+
+Chaque décision (motif inclus) est journalisée dans
+[`decisions_log.jsonl`](decisions_log.jsonl), qu'elle soit une promotion ou un
+rejet. En cas de promotion, le modèle est écrit dans
+`services/model/models/pyrenex_risk_v2_1.joblib`/`.json` et les feedbacks
+utilisés sont marqués `used_for_training`.
+
+### E — Trigger + CI
+
+Déclenchement automatique via [`crontab.txt`](crontab.txt) : vérification
+toutes les 6h (`0 */6 * * *`), appel de `retrain.py --min-feedback 200`.
+Déclenchement manuel possible via `workflow_dispatch` sur le workflow CI, ou en
+exécutant directement la commande en local.
+
+### Tests
+
+Voir [`tests/test_boucle.py`](tests/test_boucle.py) (endpoint feedback,
+politique de promotion sur métriques mockées — cas promu et cas rejetés,
+lecture des feedbacks non consommés depuis SQLite),
+[`tests/test_feedback_store.py`](tests/test_feedback_store.py) (jointure,
+marquage, injection mock) et [`tests/test_evaluation.py`](tests/test_evaluation.py)
+(calcul et vérification des métriques). Les tests de décision de promotion
+n'exécutent jamais d'entraînement réel : ils manipulent des dictionnaires de
+métriques.
+
+Complétés par [`tests/test_preprocess.py`](tests/test_preprocess.py)
+(chargement/mapping de la cible, colonnes manquantes, préprocesseur sans NaN
+et robuste aux catégories inconnues), [`tests/test_build_reference_set.py`](tests/test_build_reference_set.py)
+(échantillonnage stratifié, reproductibilité, holdout absent),
+[`tests/test_bootstrap_noise.py`](tests/test_bootstrap_noise.py) (sigma des 4
+métriques cibles), [`tests/test_generate_traffic.py`](tests/test_generate_traffic.py)
+(construction des payloads, gestion des erreurs HTTP/réseau) et
+[`tests/test_retrain.py`](tests/test_retrain.py) (construction du jeu
+d'entraînement, entraînement/évaluation/validation du candidat, hash du
+dataset, journalisation de la décision et des métadonnées promues) — le reste
+du pipeline `retrain.py` non couvert par `test_boucle.py`.
+
+⚠️ La CI (`.github/workflows/ci.yml`) n'exécute aujourd'hui que
+`tests/test_evaluation.py` (job `evaluate-model`) et `services/model/tests`
+(job `tests`) : `test_boucle.py`, `test_feedback_store.py` et les nouveaux
+fichiers ci-dessus ne sont pas encore lancés automatiquement — `pytest -q
+tests` reste donc nécessaire en local avant de pousser.
+
+### Suivi / astreinte
+
+La boucle (déclenchement, backlog de feedbacks, rejets de promotion,
+incohérence tag/déploiement) est couverte par [`runbook.md`](runbook.md).
+
+### Reste à faire
+
+- Créer et pousser le tag git `v2.1.0` une fois une promotion validée (étape
+  manuelle/CI, non automatisée par `retrain.py`) : la promotion a eu lieu
+  (`decisions_log.jsonl`, 2026-09-09) et `services/model/models/pyrenex_risk_v2_1.joblib`/`.json`
+  existent, mais aucun tag `v2.1.0` n'a encore été créé (`git tag --list` ne
+  liste que `v0.0.1`, `v1.1.0-eval-continue-franck`, `v1.1.0-eval-continue-theo`).
