@@ -2,7 +2,7 @@ name: CI/CD Pyrenex Prod
 
 on:
   push:
-    branches: [main, M5-B2-theo]
+    branches: [main, M5-B2-theo, m6-b2-boucle-theo-celia]
     tags: ["v*"]
   pull_request:
     branches: [main]
