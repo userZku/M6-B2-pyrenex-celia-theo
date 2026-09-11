@@ -48,9 +48,9 @@ si traité, quelle fonction de M6-B1 est appelée ? _…_
 
 ## Jeu de référence retenu 
 
-**Jeu adopté** : _reference_set.csv de M5-B2 de ____ (500 lignes, composition ____)_
+**Jeu adopté** : `reference_set.csv` du M5-B2 (500 lignes, échantillonnage stratifié par `loan_status`, ≈ 18,4 % de défauts), figé dans `data/reference_baseline.json` (métriques de référence `v2.0.0`).
 
-**Pourquoi** : _solution plus rapide pour se concentrer sur l'essentiel du brief._
+**Pourquoi** : solution plus rapide pour se concentrer sur l'essentiel du brief, et cohérente avec les seuils M5-B2 déjà calibrés sur ce même jeu (cf. avertissement ci-dessous).
 
 Les seuils M5-B2 s'appliquent tels quels.
 
@@ -97,16 +97,16 @@ used_for_training=0)` — cf. section « Contrats d'interface ».
 
 | Paramètre | Valeur retenue | Justification |
 |---|---|---|
-| Métriques critiques | _…_ | _…_ |
-| Plancher de qualité | _…_ | _…_ |
-| Tolérance de régression | _…_ | _…_ |
-| Gain minimum exigé | _…_ | _…_ |
+| Métriques critiques | `f1_macro`, `recall_default` | Ce sont les deux métriques qui capturent le risque métier (défauts manqués) et la robustesse sur la classe minoritaire. |
+| Plancher de qualité | `f1_macro ≥ 0.55`, `f1_default ≥ 0.35`, `roc_auc ≥ 0.65`, `recall_default ≥ 0.50` | Seuils hérités de la politique d'évaluation continue M5-B2 (`evaluation_thresholds.md`), calibrés sur ce même jeu de référence. |
+| Tolérance de régression | `0.01` | Marge tolérée sur une métrique critique pour absorber le bruit d'échantillonnage (cf. tolérances bootstrap 2σ de `evaluation_thresholds.md`) sans bloquer un candidat équivalent. |
+| Gain minimum exigé | `0.01` | Évite de promouvoir un candidat qui ne fait que stagner : il doit apporter un progrès mesurable sur au moins une métrique suivie. |
 
 **Pourquoi le recall de la classe défaut est-il contraignant ?**
-_(que coûte à Pyrenex un dossier en défaut prédit comme remboursé ?)_ — _…_
+_(que coûte à Pyrenex un dossier en défaut prédit comme remboursé ?)_ — Un faux négatif sur la classe défaut, c'est un crédit accordé à un emprunteur qui ne remboursera pas : le coût métier (perte en capital) est direct et immédiat, bien plus élevé que celui d'un faux positif (dossier sain refusé, coût d'opportunité seulement). Le recall_default mesure directement la capacité du modèle à ne pas laisser passer ces dossiers.
 
 **Pourquoi F1 macro plutôt que l'accuracy ?**
-_(quel est le taux de défauts dans les données ?)_ — _…_
+_(quel est le taux de défauts dans les données ?)_ — Le jeu est déséquilibré (≈ 18,4 % de défauts sur le jeu de référence) : un modèle qui prédit presque toujours "pas de défaut" afficherait déjà une accuracy élevée sans détecter la classe minoritaire. Le F1 macro moyenne les F1 des deux classes à poids égal, ce qui empêche la classe majoritaire de masquer un effondrement sur la classe défaut.
 
 ## Politique de doublon sur les feedbacks
 
@@ -118,17 +118,17 @@ _(quel est le taux de défauts dans les données ?)_ — _…_
 
 ## Résultat de notre exécution
 
-**Décision obtenue** : _PROMOTE / REJECT_
+**Décision obtenue** : **PROMOTE** (run du 2026-09-09, 200 feedbacks consommés, cf. `decisions_log.jsonl`)
 
 | Métrique | Production | Candidat | Écart |
 |---|---|---|---|
-| f1_macro | _…_ | _…_ | _…_ |
-| recall_default | _…_ | _…_ | _…_ |
-| roc_auc | _…_ | _…_ | _…_ |
+| f1_macro | 0.5968 | 0.6082 | +0.0114 |
+| recall_default | 0.6630 | 0.6957 | +0.0326 |
+| roc_auc | 0.7250 | 0.7312 | +0.0062 |
 
-**Ce qu'on en conclut, en une phrase défendable devant Sophie Léger** : _…_
+**Ce qu'on en conclut, en une phrase défendable devant Sophie Léger** : le candidat respecte tous les planchers de qualité, ne régresse sur aucune métrique critique et améliore le recall défaut de +0.0326 (> gain minimum de 0.01) grâce aux 200 feedbacks intégrés — la promotion vers v2.1.0 est justifiée.
 
-**Chemin de rejet démontré ?** _oui / non_ — comment : _…_
+**Chemin de rejet démontré ?** oui — testé dans `tests/test_boucle.py` sur des métriques mockées (régression critique, absence de gain, plancher de qualité non atteint), sans dépendre d'un entraînement réel.
 
 ## RGPD
 
@@ -141,7 +141,7 @@ jamais laisser un conseiller y saisir du nominatif.
 
 ## Point de mi-parcours (jeudi 17h)
 
-- État des briques : _…_
+- État des briques : A et B (endpoint + stockage feedback) et D (politique de promotion) terminées et testées ; C (retrain.py) en cours de finalisation ; E (trigger cron) rédigé.
 - **Switch des rôles** :
     - Figer le jeu de réference, completer ce fichier : ensemble
     - schema mermaid : ensemble

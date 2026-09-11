@@ -90,3 +90,152 @@ et sans aggraver l'incident.
 **On NE fait PAS**
 - Ne pas supprimer les images/tags precedents pendant l'incident.
 - Ne pas faire de rollback partiel non documente.
+
+## Boucle de feedback et reentrainement
+
+Rappel du cycle : `POST /feedback` (service `feedback`, table SQLite
+`feedbacks.db`) -> cron toutes les 6h (`crontab.txt`) declenche
+`scripts/retrain.py` si au moins 200 feedbacks non consommes
+(`used_for_training = 0`) -> reentrainement sur donnees d'origine + feedbacks
+-> evaluation du candidat et de la prod sur le meme `data/reference_set.csv`
+(jeu de reference fige) -> `decide_promotion` (`scripts/promotion.py`) ->
+promotion vers `v2.1.0` ou rejet, decision tracee dans `decisions_log.jsonl`.
+Rappel de la politique de promotion : planchers `f1_macro` >= 0.55,
+`f1_default` >= 0.35, `roc_auc` >= 0.65, `recall_default` >= 0.50 ; metriques
+critiques `f1_macro` et `recall_default` (un faux negatif = defaut de credit
+non detecte, cout metier direct ; jeu desequilibre donc l'accuracy seule peut
+masquer un effondrement sur la classe minoritaire) ; rejet si regression > 0.01
+(`TOLERANCE`) sur une metrique critique ; promotion seulement si en plus un
+gain >= 0.01 (`MIN_GAIN`) sur au moins une metrique.
+
+## 5. Job de reentrainement en echec ou silencieux
+
+**Declenchement**
+- `logs/retrain.log` absent de mise a jour depuis > 6h (le cron n'a pas
+  tourne), ou derniere execution en erreur (stack trace, code retour != 0).
+- Alerte manuelle : un feedback recent existe mais aucune nouvelle ligne
+  n'apparait dans `decisions_log.jsonl` depuis plusieurs cycles de 6h.
+
+**Actions**
+1. Verifier que le cron est installe et actif : `crontab -l` sur l'hote de
+   deploiement.
+2. Lire les dernieres lignes de `logs/retrain.log` pour identifier l'erreur
+   (dependances manquantes, chemin de fichier introuvable, erreur SQLite,
+   erreur d'entrainement).
+3. Verifier l'acces aux fichiers requis : `data/lending_club_train.csv`,
+   `data/reference_set.csv`, `data/feedbacks.db`,
+   `services/model/models/pyrenex_risk_v2.joblib`/`.json`.
+4. Rejouer manuellement en local pour reproduire :
+   `python scripts/retrain.py --min-feedback 200`.
+5. Si l'erreur vient d'une donnee corrompue (feedback invalide, colonne
+   manquante), ne pas corriger les donnees a la main en prod : escalader vers
+   le data scientist/model owner.
+
+**Qui appeler**
+- T+0: SRE on-call (verification technique du job/cron).
+- T+15 min: data scientist/model owner si l'erreur vient du pipeline
+  d'entrainement ou des donnees.
+- T+30 min: engineer backend si le probleme vient de l'infra (hote, permissions,
+  disque plein).
+
+**On NE fait PAS**
+- Ne pas relancer le cron en boucle sans lire la log d'erreur.
+- Ne pas modifier `data/lending_club_train.csv` ou `data/reference_set.csv`
+  pour "faire passer" un run en echec.
+
+## 6. Backlog de feedbacks qui ne se vide pas
+
+**Declenchement**
+- Panel Grafana / requete SQLite montrant que le nombre de feedbacks avec
+  `used_for_training = 0` augmente sans jamais redescendre malgre les
+  executions du cron.
+- `GET /feedback/count` renvoie un `new` qui ne diminue jamais apres un
+  cycle de retrain reussi.
+
+**Actions**
+1. Confirmer que `retrain.py` s'execute bien (voir procedure 5) et se termine
+   sans erreur.
+2. Verifier si le seuil `--min-feedback` (200 par defaut) n'est simplement
+   jamais atteint : comparer au volume reel de feedbacks recus recemment.
+3. Si le seuil est atteint mais le backlog ne bouge pas, verifier que
+   `mark_used_for_training` est bien appele : cela n'arrive que si la
+   promotion a lieu ET que le run se termine sans exception avant cette etape
+   (voir `scripts/retrain.py`) — un rejet de promotion (procedure 7) laisse
+   normalement les feedbacks marques consommes malgre tout ; verifier la
+   logique dans `decisions_log.jsonl` (champ `feedback_count` par run).
+4. Verifier l'integrite du join feedback <-> `prod_scored.csv` :
+   `scripts/feedback_store.load_labeled_feedback` leve une erreur si des
+   `request_id` de feedback n'ont pas de correspondance dans `prod_scored.csv`
+   (donnees de scoring manquantes ou tronquees).
+
+**Qui appeler**
+- T+0: SRE on-call (verification technique et volume).
+- T+15 min: data scientist/model owner si le join feedback/scoring est cassé
+  ou si le seuil de declenchement doit etre revu.
+
+**On NE fait PAS**
+- Ne pas marquer manuellement des feedbacks comme consommes en base pour
+  "vider" le backlog sans comprendre la cause.
+- Ne pas baisser `--min-feedback` en prod sans validation (ca change la
+  frequence de reentrainement et la taille des lots de feedback integres).
+
+## 7. Rejet de promotion inattendu ou repete
+
+**Declenchement**
+- Plusieurs executions consecutives de `retrain.py` aboutissent a
+  `promote: false` dans `decisions_log.jsonl`, alors que des feedbacks
+  continuent d'etre collectes (le modele en prod ne s'ameliore jamais).
+
+**Actions**
+1. Lire la `reason` de la derniere decision dans `decisions_log.jsonl` :
+   plancher de qualite non atteint, regression sur une metrique critique, ou
+   absence de gain suffisant.
+2. Comparer les metriques candidat vs production de plusieurs runs recents
+   pour voir si le candidat stagne ou regresse systematiquement.
+3. Si regression sur une metrique critique (`f1_macro`, `recall_default`) :
+   suspecter un probleme de qualite des feedbacks recents (labels bruites,
+   deséquilibre accentue) plutot qu'un probleme de code.
+4. Si le candidat est "juste" en dessous du gain minimum (`MIN_GAIN`) de facon
+   repetee, c'est un comportement attendu de la politique (pas de promotion
+   sans amelioration reelle) : ne pas forcer une promotion sans revue.
+5. Documenter le constat dans `decisions.md` / ticket "Data/Model" pour suivi.
+
+**Qui appeler**
+- T+0: SRE on-call (constat, pas d'action technique correctrice attendue).
+- T+15 min: data scientist/model owner pour analyser la qualite des feedbacks
+  et la pertinence des seuils.
+
+**On NE fait PAS**
+- Ne pas modifier les seuils (`THRESHOLDS`, `TOLERANCE`, `MIN_GAIN`) dans
+  `scripts/promotion.py` en reaction a un rejet, sans revue.
+- Ne pas forcer une promotion manuelle en copiant le `.joblib` candidat en
+  production sans passer par `decide_promotion`.
+
+## 8. Promotion effectuee mais tag/deploiement incoherent
+
+**Declenchement**
+- `decisions_log.jsonl` indique `promote: true` et
+  `services/model/models/pyrenex_risk_v2_1.joblib`/`.json` existent, mais le
+  modele servi en prod (`/health`, metadonnees exposees par l'API) reste en
+  `v2.0.x`, ou le tag git `v2.1.0` correspondant est absent/non pousse.
+
+**Actions**
+1. Verifier la presence du tag : `git tag --list` (doit contenir `v2.1.0`
+   apres une promotion). La creation/push du tag est une etape manuelle/CI,
+   non automatisee par `retrain.py`.
+2. Verifier que le pipeline CI/CD a bien recupere le tag et redeploye le
+   service `model` avec le nouveau fichier `.joblib`.
+3. Si le tag est manquant, le creer et le pousser suivant la procedure prevue
+   (cf. README_M6.md), puis surveiller le redeploiement.
+4. Une fois deploye, verifier `/health` et le panel Grafana version modele en
+   prod, puis suivre les metriques de comportement (procedure 3) pendant les
+   premieres heures.
+
+**Qui appeler**
+- T+0: SRE on-call + release manager.
+- T+15 min: data scientist/model owner pour confirmer la version attendue.
+
+**On NE fait PAS**
+- Ne pas remplacer le modele en prod a la main sans passer par le tag/CI.
+- Ne pas supprimer le fichier `pyrenex_risk_candidate.joblib` avant d'avoir
+  confirme la promotion (utile pour rejouer/diagnostiquer).

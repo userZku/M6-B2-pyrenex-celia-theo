@@ -96,3 +96,96 @@ flowchart TD
 ## 📚 Ressources
 
 Voir [`./ressources/`](./ressources/) — 5 mini-cours + `liens_officiels.md`.
+
+## 🛠️ Implémentation réalisée
+
+Ce qui suit décrit l'état réel de la boucle telle qu'implémentée dans ce
+dépôt (au-delà du template ci-dessus).
+
+### Jeu de référence
+
+Le `data/reference_set.csv` livré a été remplacé par le jeu de référence de
+500 lignes (≈ 18,4 % de défauts) hérité du M5-B2, figé et versionné dans
+`data/reference_baseline.json` (métriques de référence pour `v2.0.0`). Choix
+et justification consignés dans `decisions.md` (section « Jeu de référence
+retenu »). Construit par [`scripts/build_reference_set.py`](scripts/build_reference_set.py)
+(échantillonnage stratifié, `random_state=42`).
+
+### A/B — Endpoint feedback + stockage
+
+[`services/feedback/app/main.py`](services/feedback/app/main.py) expose :
+- `POST /feedback` : valide `request_id` / `true_label` (0 ou 1) via Pydantic,
+  404 si `request_id` inconnu (absent de `data/prod_scored.csv`), 409 en cas de
+  feedback contradictoire (même `request_id`, label différent), idempotent
+  (rejeu à l'identique → 201 sans doublon).
+- `GET /feedback/count` : nombre total et nombre de feedbacks non consommés.
+- `GET /mock-feedback?feedNumber=N` : injection incrémentale de feedbacks
+  simulés pour les tests/démos.
+
+Stockage SQLite (table `feedbacks` : `request_id` clé primaire, `true_label`,
+`comments`, `created_at`, `used_for_training` par défaut à 0). La jointure
+feedback ⋈ scoring (`request_id`) est gérée par
+[`scripts/feedback_store.py`](scripts/feedback_store.py)
+(`load_labeled_feedback`, `mark_used_for_training`, `inject_mock_feedback`).
+
+### C — Réentraînement (`scripts/retrain.py`)
+
+[`scripts/retrain.py`](scripts/retrain.py) : charge les feedbacks non
+consommés, ne déclenche l'entraînement que si leur nombre atteint
+`--min-feedback` (200 par défaut, sinon sortie en succès sans rien faire),
+construit le jeu d'entraînement (données d'origine + feedbacks labellisés),
+entraîne un `RandomForestClassifier` (pipeline avec le préprocesseur
+existant), sauvegarde le candidat (`pyrenex_risk_candidate.joblib`), puis
+évalue candidat et production sur le même jeu de référence figé
+(`data/reference_set.csv`).
+
+### D — Politique de promotion (`scripts/promotion.py`)
+
+`decide_promotion()` implémente la règle explicite :
+- **Plancher de qualité** : le candidat doit respecter `f1_macro ≥ 0.55`,
+  `f1_default ≥ 0.35`, `roc_auc ≥ 0.65`, `recall_default ≥ 0.50`.
+- **Métriques critiques** : `f1_macro` et `recall_default`. Justification : un
+  faux négatif (défaut non détecté) a un coût métier direct (risque de
+  crédit), et le jeu étant déséquilibré, une accuracy globale peut masquer un
+  effondrement sur la classe minoritaire (défaut) — d'où l'usage du F1 macro
+  en complément.
+- **Non-régression** : rejet si une métrique critique recule de plus de
+  `TOLERANCE = 0.01` par rapport à la production.
+- **Gain minimum** : promotion seulement si, en plus, au moins une métrique
+  progresse d'au moins `MIN_GAIN = 0.01`.
+
+Chaque décision (motif inclus) est journalisée dans
+[`decisions_log.jsonl`](decisions_log.jsonl), qu'elle soit une promotion ou un
+rejet. En cas de promotion, le modèle est écrit dans
+`services/model/models/pyrenex_risk_v2_1.joblib`/`.json` et les feedbacks
+utilisés sont marqués `used_for_training`.
+
+### E — Trigger + CI
+
+Déclenchement automatique via [`crontab.txt`](crontab.txt) : vérification
+toutes les 6h (`0 */6 * * *`), appel de `retrain.py --min-feedback 200`.
+Déclenchement manuel possible via `workflow_dispatch` sur le workflow CI, ou en
+exécutant directement la commande en local.
+
+### Tests
+
+Voir [`tests/test_boucle.py`](tests/test_boucle.py) (endpoint feedback,
+politique de promotion sur métriques mockées — cas promu et cas rejetés,
+lecture des feedbacks non consommés depuis SQLite),
+[`tests/test_feedback_store.py`](tests/test_feedback_store.py) (jointure,
+marquage, injection mock) et [`tests/test_evaluation.py`](tests/test_evaluation.py)
+(calcul et vérification des métriques). Les tests de décision de promotion
+n'exécutent jamais d'entraînement réel : ils manipulent des dictionnaires de
+métriques.
+
+### Suivi / astreinte
+
+La boucle (déclenchement, backlog de feedbacks, rejets de promotion,
+incohérence tag/déploiement) est couverte par [`runbook.md`](runbook.md).
+
+### Reste à faire
+
+- Créer et pousser le tag git `v2.1.0` une fois une promotion validée (étape
+  manuelle/CI, non automatisée par `retrain.py`).
+- Reporter le résultat de l'exécution réelle (déjà dans `decisions_log.jsonl`)
+  dans les sections encore vides de `decisions.md`.
